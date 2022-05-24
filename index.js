@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -22,6 +23,7 @@ async function run() {
     const toolCollection = client.db("carpenter-tools").collection("tools");
     const orderCollection = client.db("carpenter-tools").collection("orders");
     const reviewCollection = client.db("carpenter-tools").collection("reviews");
+    const userCollection = client.db("carpenter-tools").collection("users");
 
     app.get("/tool", async (req, res) => {
       const tools = await toolCollection.find({}).toArray();
@@ -72,6 +74,28 @@ async function run() {
       const addReview = req.body;
       const result = await reviewCollection.insertOne(addReview);
       res.send(result);
+    });
+
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1h" }
+      );
+      res.send({ result, token });
+    });
+
+    app.get("/user", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
     });
   } finally {
     //
