@@ -21,6 +21,7 @@ async function run() {
     await client.connect();
     const toolCollection = client.db("carpenter-tools").collection("tools");
     const orderCollection = client.db("carpenter-tools").collection("orders");
+    const reviewCollection = client.db("carpenter-tools").collection("reviews");
 
     app.get("/tool", async (req, res) => {
       const tools = await toolCollection.find({}).toArray();
@@ -60,6 +61,11 @@ async function run() {
       const query = { email: email };
       const orders = await orderCollection.find(query).toArray();
       res.send(orders);
+    });
+
+    app.get("/review", async (req, res) => {
+      const reviews = await reviewCollection.find({}).toArray();
+      res.send(reviews);
     });
   } finally {
     //
