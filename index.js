@@ -4,6 +4,8 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -24,6 +26,9 @@ async function run() {
     const orderCollection = client.db("carpenter-tools").collection("orders");
     const reviewCollection = client.db("carpenter-tools").collection("reviews");
     const userCollection = client.db("carpenter-tools").collection("users");
+    const paymentCollection = client
+      .db("carpenter-tools")
+      .collection("payments");
 
     app.get("/tool", async (req, res) => {
       const tools = await toolCollection.find({}).toArray();
@@ -58,6 +63,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/tool/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const deleteTool = await toolCollection.deleteOne(query);
+      res.send(deleteTool);
+    });
+
     app.post("/order", async (req, res) => {
       const purchase = req.body;
       const result = await orderCollection.insertOne(purchase);
@@ -69,6 +81,21 @@ async function run() {
       const query = { email: email };
       const orders = await orderCollection.find(query).toArray();
       res.send(orders);
+    });
+
+    // app.get("/order", async (req, res) => {
+    //   const query = { email: email };
+
+    //   const orders = await orderCollection.find(query).toArray;
+    //   console.log(orders);
+    //   res.send(orders);
+    // });
+
+    app.get("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const order = await orderCollection.findOne(query);
+      res.send(order);
     });
 
     app.get("/review", async (req, res) => {
@@ -121,6 +148,42 @@ async function run() {
       const user = await userCollection.findOne({ email: email });
       const isAdmin = user.role === "admin";
       res.send({ admin: isAdmin });
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const service = req.body;
+      const totalPrice = service.totalPrice;
+      const amount = totalPrice * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.patch("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+      const result = await paymentCollection.insertOne(payment);
+      res.send(updatedDoc);
+    });
+
+    app.delete("/order/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const result = await orderCollection.deleteOne(filter);
+      res.send(result);
     });
   } finally {
     //
