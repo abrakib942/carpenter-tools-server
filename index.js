@@ -38,17 +38,23 @@ async function run() {
       res.send(tool);
     });
 
-    app.put("/tool/:id", async (req, res) => {
-      const id = req.params.id;
-      const orderQuantity = req.body;
+    // app.put("/tool/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const orderQuantity = req.body;
 
-      const filter = { _id: ObjectId(id) };
-      const updateDoc = {
-        $set: { orderQuantity },
-      };
-      const options = { upsert: true };
-      const result = await toolCollection.updateOne(filter, updateDoc, options);
+    //   const filter = { _id: ObjectId(id) };
+    //   const updateDoc = {
+    //     $set: { orderQuantity },
+    //   };
+    //   const options = { upsert: true };
+    //   const result = await toolCollection.updateOne(filter, updateDoc, options);
 
+    //   res.send(result);
+    // });
+
+    app.post("/tool", async (req, res) => {
+      const addProduct = req.body;
+      const result = await toolCollection.insertOne(addProduct);
       res.send(result);
     });
 
